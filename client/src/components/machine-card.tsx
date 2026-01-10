@@ -88,7 +88,7 @@ export function MachineCard({
               }`}
               data-testid={`text-limit-${machine.id}`}
             >
-              Limit: {owned}/{machine.maxRentals}
+              Limit: {remainingRentals}/{machine.maxRentals}
             </span>
           </div>
 
