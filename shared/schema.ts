@@ -85,6 +85,10 @@ export const withdrawalRequests = pgTable("withdrawal_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   amount: real("amount").notNull(),
+  taxAmount: real("tax_amount").notNull(),
+  netAmount: real("net_amount").notNull(),
+  method: text("method").notNull().default("easypaisa"),
+  accountHolderName: text("account_holder_name").notNull(),
   accountNumber: text("account_number").notNull(),
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -93,11 +97,17 @@ export const withdrawalRequests = pgTable("withdrawal_requests", {
 export const insertWithdrawalSchema = createInsertSchema(withdrawalRequests).pick({
   userId: true,
   amount: true,
+  taxAmount: true,
+  netAmount: true,
+  method: true,
+  accountHolderName: true,
   accountNumber: true,
 });
 
 export const withdrawalFormSchema = z.object({
   amount: z.number().min(500, "Minimum withdrawal is 500 PKR"),
+  method: z.enum(["easypaisa", "jazzcash"], { required_error: "Please select a payment method" }),
+  accountHolderName: z.string().min(3, "Enter account holder name"),
   accountNumber: z.string().min(11, "Enter a valid account number"),
 });
 
