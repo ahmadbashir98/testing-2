@@ -106,9 +106,20 @@ export async function registerRoutes(
     }
   });
 
+  // Admin middleware helper
+  const requireAdmin = async (userId: string): Promise<boolean> => {
+    if (!userId) return false;
+    const user = await storage.getUser(userId);
+    return user?.isAdmin === true;
+  };
+
   // Admin: Get global stats
   app.get("/api/admin/stats", async (req, res) => {
     try {
+      const adminId = req.query.adminId as string;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
       const users = await storage.getAllUsers();
       const deposits = await storage.getAllDeposits();
       const totalUsers = users.length;
@@ -125,6 +136,10 @@ export async function registerRoutes(
   // Admin: Get all users
   app.get("/api/admin/users", async (req, res) => {
     try {
+      const adminId = req.query.adminId as string;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
       const users = await storage.getAllUsers();
       const safeUsers = users.map(u => {
         const { password: _, ...safe } = u;
@@ -139,7 +154,10 @@ export async function registerRoutes(
   // Admin: Update user balance
   app.patch("/api/admin/users/:id/balance", async (req, res) => {
     try {
-      const { balance } = req.body;
+      const { balance, adminId } = req.body;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
       if (typeof balance !== "number") {
         return res.status(400).json({ message: "Balance must be a number" });
       }
@@ -158,7 +176,17 @@ export async function registerRoutes(
   app.get("/api/mining/session/:userId", async (req, res) => {
     try {
       const session = await storage.getActiveMiningSession(req.params.userId);
-      res.json(session || null);
+      if (session) {
+        // Return session with ISO timestamp and server time for sync
+        res.json({
+          ...session,
+          endsAt: new Date(session.endsAt).toISOString(),
+          startedAt: new Date(session.startedAt).toISOString(),
+          serverTime: new Date().toISOString(),
+        });
+      } else {
+        res.json(null);
+      }
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Server error" });
     }
@@ -181,7 +209,12 @@ export async function registerRoutes(
       endsAt.setHours(endsAt.getHours() + 24);
 
       const session = await storage.createMiningSession(userId, endsAt);
-      res.json(session);
+      res.json({
+        ...session,
+        endsAt: endsAt.toISOString(),
+        startedAt: new Date(session.startedAt).toISOString(),
+        serverTime: new Date().toISOString(),
+      });
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Server error" });
     }
@@ -361,6 +394,10 @@ export async function registerRoutes(
   // Admin: Get all withdrawals
   app.get("/api/admin/withdrawals", async (req, res) => {
     try {
+      const adminId = req.query.adminId as string;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
       const withdrawals = await storage.getAllWithdrawals();
       res.json(withdrawals);
     } catch (error: any) {
@@ -371,7 +408,10 @@ export async function registerRoutes(
   // Admin: Update withdrawal status
   app.patch("/api/admin/withdrawals/:id", async (req, res) => {
     try {
-      const { status } = req.body;
+      const { status, adminId } = req.body;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
       if (!["approved", "rejected", "pending"].includes(status)) {
         return res.status(400).json({ message: "Invalid status" });
       }
@@ -427,6 +467,10 @@ export async function registerRoutes(
   // Admin: Get all deposits
   app.get("/api/admin/deposits", async (req, res) => {
     try {
+      const adminId = req.query.adminId as string;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
       const deposits = await storage.getAllDeposits();
       res.json(deposits);
     } catch (error: any) {
@@ -438,6 +482,9 @@ export async function registerRoutes(
   app.patch("/api/admin/deposits/:id", async (req, res) => {
     try {
       const { status, adminId } = req.body;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
       if (!["approved", "rejected", "pending"].includes(status)) {
         return res.status(400).json({ message: "Invalid status" });
       }

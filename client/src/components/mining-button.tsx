@@ -4,16 +4,20 @@ import { Zap, Loader2 } from "lucide-react";
 interface MiningButtonProps {
   isMining: boolean;
   endTime: Date | null;
+  serverTimeOffset?: number;
   onStartMining: () => void;
   onClaimReward: () => void;
+  onTimerExpired?: () => void;
   isLoading: boolean;
 }
 
 export function MiningButton({
   isMining,
   endTime,
+  serverTimeOffset = 0,
   onStartMining,
   onClaimReward,
+  onTimerExpired,
   isLoading,
 }: MiningButtonProps) {
   const [timeLeft, setTimeLeft] = useState<string>("24:00:00");
@@ -26,15 +30,17 @@ export function MiningButton({
       return;
     }
 
-    const interval = setInterval(() => {
-      const now = new Date();
-      const diff = endTime.getTime() - now.getTime();
+    const updateTimer = () => {
+      // Use server-synced time by applying the offset
+      const now = Date.now() + serverTimeOffset;
+      const diff = endTime.getTime() - now;
 
       if (diff <= 0) {
         setTimeLeft("00:00:00");
         setCanClaim(true);
-        clearInterval(interval);
-        return;
+        // Notify parent to refetch session data
+        onTimerExpired?.();
+        return true; // Timer expired
       }
 
       const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -47,10 +53,20 @@ export function MiningButton({
           .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
       );
       setCanClaim(false);
+      return false; // Timer still running
+    };
+
+    // Initial update
+    const expired = updateTimer();
+    if (expired) return;
+
+    const interval = setInterval(() => {
+      const expired = updateTimer();
+      if (expired) clearInterval(interval);
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isMining, endTime]);
+  }, [isMining, endTime, serverTimeOffset, onTimerExpired]);
 
   const handleClick = () => {
     if (isLoading) return;

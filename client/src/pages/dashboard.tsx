@@ -13,10 +13,12 @@ export default function Dashboard() {
   const { user, login } = useAuth();
   const { toast } = useToast();
   const [miningEndTime, setMiningEndTime] = useState<Date | null>(null);
+  const [serverTimeOffset, setServerTimeOffset] = useState<number>(0);
 
-  const { data: miningSession, isLoading: sessionLoading } = useQuery<any>({
+  const { data: miningSession, isLoading: sessionLoading, refetch: refetchSession } = useQuery<any>({
     queryKey: ["/api/mining/session", user?.id],
     enabled: !!user?.id,
+    refetchInterval: 60000, // Refetch every minute to stay synced
   });
 
   const { data: userData } = useQuery<any>({
@@ -25,7 +27,14 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    if (miningSession?.endsAt) {
+    if (miningSession?.endsAt && miningSession?.serverTime) {
+      // Calculate time offset between server and client
+      const serverNow = new Date(miningSession.serverTime).getTime();
+      const clientNow = Date.now();
+      const offset = serverNow - clientNow;
+      setServerTimeOffset(offset);
+      
+      // Use the server's endsAt timestamp directly
       setMiningEndTime(new Date(miningSession.endsAt));
     } else {
       setMiningEndTime(null);
@@ -127,8 +136,10 @@ export default function Dashboard() {
           <MiningButton
             isMining={isMining}
             endTime={miningEndTime}
+            serverTimeOffset={serverTimeOffset}
             onStartMining={() => startMiningMutation.mutate()}
             onClaimReward={() => claimRewardMutation.mutate()}
+            onTimerExpired={() => refetchSession()}
             isLoading={isLoading}
           />
         </div>

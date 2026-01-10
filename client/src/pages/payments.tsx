@@ -86,7 +86,12 @@ export default function Payments() {
   });
 
   const { data: userMachines = [] } = useQuery<any[]>({
-    queryKey: ["/api/machines/user", user?.id],
+    queryKey: ["/api/machines/owned", user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/machines/owned/${user?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch machines");
+      return res.json();
+    },
     enabled: !!user?.id,
   });
 

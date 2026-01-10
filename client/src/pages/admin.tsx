@@ -16,25 +16,63 @@ export default function Admin() {
   const { toast } = useToast();
   const [balanceInput, setBalanceInput] = useState<Record<string, string>>({});
 
+  // Check if user is admin - if not, show access denied
+  if (!user?.isAdmin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-blue-950/10 flex items-center justify-center">
+        <Card className="p-8 text-center">
+          <CardContent>
+            <h2 className="text-xl font-bold text-red-400 mb-2">Access Denied</h2>
+            <p className="text-muted-foreground">You do not have admin privileges.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const { data: stats } = useQuery<{ totalUsers: number; totalBalance: number; totalDeposits: number }>({
-    queryKey: ["/api/admin/stats"],
+    queryKey: ["/api/admin/stats", user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/stats?adminId=${user?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      return res.json();
+    },
+    enabled: !!user?.id && user?.isAdmin,
   });
 
   const { data: users = [], isLoading: usersLoading } = useQuery<any[]>({
-    queryKey: ["/api/admin/users"],
+    queryKey: ["/api/admin/users", user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/users?adminId=${user?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch users");
+      return res.json();
+    },
+    enabled: !!user?.id && user?.isAdmin,
   });
 
   const { data: deposits = [], isLoading: depositsLoading } = useQuery<any[]>({
-    queryKey: ["/api/admin/deposits"],
+    queryKey: ["/api/admin/deposits", user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/deposits?adminId=${user?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch deposits");
+      return res.json();
+    },
+    enabled: !!user?.id && user?.isAdmin,
   });
 
   const { data: withdrawals = [], isLoading: withdrawalsLoading } = useQuery<any[]>({
-    queryKey: ["/api/admin/withdrawals"],
+    queryKey: ["/api/admin/withdrawals", user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/withdrawals?adminId=${user?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch withdrawals");
+      return res.json();
+    },
+    enabled: !!user?.id && user?.isAdmin,
   });
 
   const updateBalanceMutation = useMutation({
     mutationFn: async ({ userId, balance }: { userId: string; balance: number }) => {
-      const res = await apiRequest("PATCH", `/api/admin/users/${userId}/balance`, { balance });
+      const res = await apiRequest("PATCH", `/api/admin/users/${userId}/balance`, { balance, adminId: user?.id });
       return await res.json();
     },
     onSuccess: () => {
@@ -65,7 +103,7 @@ export default function Admin() {
 
   const updateWithdrawalMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const res = await apiRequest("PATCH", `/api/admin/withdrawals/${id}`, { status });
+      const res = await apiRequest("PATCH", `/api/admin/withdrawals/${id}`, { status, adminId: user?.id });
       return await res.json();
     },
     onSuccess: () => {

@@ -116,15 +116,17 @@ export default function Profile() {
               <Gift className="w-5 h-5" />
               Refer & Earn
             </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-3 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-              onClick={() => setLocation("/admin-portal")}
-              data-testid="button-goto-admin"
-            >
-              <Shield className="w-5 h-5" />
-              Admin Panel
-            </Button>
+            {displayUser?.isAdmin && (
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-3 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                onClick={() => setLocation("/admin-portal")}
+                data-testid="button-goto-admin"
+              >
+                <Shield className="w-5 h-5" />
+                Admin Panel
+              </Button>
+            )}
           </CardContent>
         </Card>
 
