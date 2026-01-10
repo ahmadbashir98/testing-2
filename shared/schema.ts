@@ -153,15 +153,25 @@ export const referralCommissions = pgTable("referral_commissions", {
 
 export type ReferralCommission = typeof referralCommissions.$inferSelect;
 
-export const MINING_MACHINES_DATA: Omit<MiningMachine, "">[] = [
-  { id: "m1", name: "M1", level: 1, price: 1500, dailyProfit: 80 },
-  { id: "m2", name: "M2", level: 2, price: 3000, dailyProfit: 100 },
-  { id: "m3", name: "M3", level: 3, price: 6000, dailyProfit: 210 },
-  { id: "m4", name: "M4", level: 4, price: 15000, dailyProfit: 500 },
-  { id: "m5", name: "M5", level: 5, price: 30000, dailyProfit: 1030 },
-  { id: "m6", name: "M6", level: 6, price: 45000, dailyProfit: 1630 },
-  { id: "m7", name: "M7", level: 7, price: 60000, dailyProfit: 2060 },
-  { id: "m8", name: "M8", level: 8, price: 80000, dailyProfit: 2800 },
-  { id: "m9", name: "M9", level: 9, price: 100000, dailyProfit: 3600 },
-  { id: "m10", name: "M10", level: 10, price: 150000, dailyProfit: 5500 },
+export interface MachineData {
+  id: string;
+  name: string;
+  level: number;
+  price: number;
+  dailyProfit: number;
+  duration: number;
+  maxRentals: number;
+}
+
+export const MINING_MACHINES_DATA: MachineData[] = [
+  { id: "m1", name: "M1", level: 1, price: 1500, dailyProfit: 100, duration: 25, maxRentals: 1 },
+  { id: "m2", name: "M2", level: 2, price: 5000, dailyProfit: 200, duration: 60, maxRentals: 1 },
+  { id: "m3", name: "M3", level: 3, price: 10000, dailyProfit: 400, duration: 60, maxRentals: 1 },
+  { id: "m4", name: "M4", level: 4, price: 20000, dailyProfit: 800, duration: 60, maxRentals: 1 },
+  { id: "m5", name: "M5", level: 5, price: 35000, dailyProfit: 1500, duration: 60, maxRentals: 2 },
+  { id: "m6", name: "M6", level: 6, price: 50000, dailyProfit: 2200, duration: 60, maxRentals: 2 },
+  { id: "m7", name: "M7", level: 7, price: 70000, dailyProfit: 3000, duration: 60, maxRentals: 2 },
+  { id: "m8", name: "M8", level: 8, price: 100000, dailyProfit: 4500, duration: 60, maxRentals: 2 },
+  { id: "m9", name: "M9", level: 9, price: 150000, dailyProfit: 7000, duration: 60, maxRentals: 2 },
+  { id: "m10", name: "M10", level: 10, price: 200000, dailyProfit: 10000, duration: 60, maxRentals: 2 },
 ];

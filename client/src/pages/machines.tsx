@@ -12,7 +12,7 @@ export default function Machines() {
   const { user, login } = useAuth();
   const { toast } = useToast();
 
-  const { data: userData, isLoading: userLoading } = useQuery({
+  const { data: userData, isLoading: userLoading } = useQuery<{ balance: number }>({
     queryKey: ["/api/users", user?.id],
     enabled: !!user?.id,
   });

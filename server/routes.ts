@@ -256,6 +256,13 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Insufficient balance" });
       }
 
+      // Check rental limit
+      const userMachines = await storage.getUserMachines(userId);
+      const currentOwned = userMachines.filter(m => m.machineId === machineId).length;
+      if (currentOwned >= machine.maxRentals) {
+        return res.status(400).json({ message: "Rental limit reached for this machine" });
+      }
+
       const newBalance = user.balance - machine.price;
       await storage.updateUserBalance(userId, newBalance);
       await storage.updateUserMiners(userId, user.totalMiners + 1);
