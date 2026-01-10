@@ -561,5 +561,98 @@ export async function registerRoutes(
     }
   });
 
+  // Announcements: Get active announcements (public)
+  app.get("/api/announcements", async (req, res) => {
+    try {
+      const announcements = await storage.getActiveAnnouncements();
+      res.json(announcements);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
+  // Announcements: Admin - Get all announcements
+  app.get("/api/admin/announcements", async (req, res) => {
+    try {
+      const adminId = req.query.adminId as string;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const announcements = await storage.getAllAnnouncements();
+      res.json(announcements);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
+  // Announcements: Admin - Create announcement with image upload
+  app.post("/api/admin/announcements", upload.single("image"), async (req, res) => {
+    try {
+      const adminId = req.body.adminId;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const { title, description, iconType, isActive, priority } = req.body;
+      if (!title || !description) {
+        return res.status(400).json({ message: "Title and description required" });
+      }
+      const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+      const announcement = await storage.createAnnouncement({
+        title,
+        description,
+        imageUrl,
+        iconType: iconType || "sparkles",
+        isActive: isActive === "true" || isActive === true,
+        priority: parseInt(priority) || 0,
+      }, adminId);
+      res.json(announcement);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
+  // Announcements: Admin - Update announcement
+  app.patch("/api/admin/announcements/:id", upload.single("image"), async (req, res) => {
+    try {
+      const adminId = req.body.adminId;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const { title, description, iconType, isActive, priority } = req.body;
+      const updateData: any = {};
+      if (title) updateData.title = title;
+      if (description) updateData.description = description;
+      if (iconType) updateData.iconType = iconType;
+      if (isActive !== undefined) updateData.isActive = isActive === "true" || isActive === true;
+      if (priority !== undefined) updateData.priority = parseInt(priority);
+      if (req.file) updateData.imageUrl = `/uploads/${req.file.filename}`;
+
+      const announcement = await storage.updateAnnouncement(req.params.id, updateData);
+      if (!announcement) {
+        return res.status(404).json({ message: "Announcement not found" });
+      }
+      res.json(announcement);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
+  // Announcements: Admin - Delete announcement
+  app.delete("/api/admin/announcements/:id", async (req, res) => {
+    try {
+      const adminId = req.query.adminId as string;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const deleted = await storage.deleteAnnouncement(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Announcement not found" });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
   return httpServer;
 }

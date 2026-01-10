@@ -153,6 +153,30 @@ export const referralCommissions = pgTable("referral_commissions", {
 
 export type ReferralCommission = typeof referralCommissions.$inferSelect;
 
+export const announcements = pgTable("announcements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  imageUrl: text("image_url"),
+  iconType: text("icon_type").notNull().default("sparkles"),
+  isActive: boolean("is_active").notNull().default(true),
+  priority: integer("priority").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: varchar("created_by"),
+});
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).pick({
+  title: true,
+  description: true,
+  imageUrl: true,
+  iconType: true,
+  isActive: true,
+  priority: true,
+});
+
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type Announcement = typeof announcements.$inferSelect;
+
 export interface MachineData {
   id: string;
   name: string;

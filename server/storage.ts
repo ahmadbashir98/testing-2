@@ -5,6 +5,7 @@ import {
   withdrawalRequests,
   depositRequests,
   referralCommissions,
+  announcements,
   type User,
   type InsertUser,
   type UserMachine,
@@ -13,6 +14,8 @@ import {
   type WithdrawalRequest,
   type DepositRequest,
   type ReferralCommission,
+  type Announcement,
+  type InsertAnnouncement,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, ne } from "drizzle-orm";
@@ -53,6 +56,12 @@ export interface IStorage {
   getLevel2Referrals(userId: string): Promise<User[]>;
   createReferralCommission(userId: string, fromUserId: string, depositId: string, level: number, amount: number): Promise<ReferralCommission>;
   getUserCommissions(userId: string): Promise<ReferralCommission[]>;
+
+  getActiveAnnouncements(): Promise<Announcement[]>;
+  getAllAnnouncements(): Promise<Announcement[]>;
+  createAnnouncement(data: InsertAnnouncement, createdBy: string): Promise<Announcement>;
+  updateAnnouncement(id: string, data: Partial<InsertAnnouncement>): Promise<Announcement | undefined>;
+  deleteAnnouncement(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -270,6 +279,46 @@ export class DatabaseStorage implements IStorage {
       .from(referralCommissions)
       .where(eq(referralCommissions.userId, userId))
       .orderBy(desc(referralCommissions.createdAt));
+  }
+
+  async getActiveAnnouncements(): Promise<Announcement[]> {
+    return await db
+      .select()
+      .from(announcements)
+      .where(eq(announcements.isActive, true))
+      .orderBy(desc(announcements.priority), desc(announcements.createdAt));
+  }
+
+  async getAllAnnouncements(): Promise<Announcement[]> {
+    return await db
+      .select()
+      .from(announcements)
+      .orderBy(desc(announcements.createdAt));
+  }
+
+  async createAnnouncement(data: InsertAnnouncement, createdBy: string): Promise<Announcement> {
+    const [announcement] = await db
+      .insert(announcements)
+      .values({ ...data, createdBy })
+      .returning();
+    return announcement;
+  }
+
+  async updateAnnouncement(id: string, data: Partial<InsertAnnouncement>): Promise<Announcement | undefined> {
+    const [announcement] = await db
+      .update(announcements)
+      .set(data)
+      .where(eq(announcements.id, id))
+      .returning();
+    return announcement || undefined;
+  }
+
+  async deleteAnnouncement(id: string): Promise<boolean> {
+    const result = await db
+      .delete(announcements)
+      .where(eq(announcements.id, id))
+      .returning();
+    return result.length > 0;
   }
 }
 
