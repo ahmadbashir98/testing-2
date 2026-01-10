@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Flame, Users, ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, Sun, Moon } from "lucide-react";
+import { Flame, Users, ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, Sun, Moon, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,8 @@ export default function Admin() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [balanceInput, setBalanceInput] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [minerFilter, setMinerFilter] = useState<"all" | "active" | "none">("all");
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
       return document.documentElement.classList.contains("dark");
@@ -238,11 +240,51 @@ export default function Admin() {
 
           <TabsContent value="users">
             <Card>
-              <CardHeader>
+              <CardHeader className="space-y-4">
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5" />
                   All Users ({users.length})
                 </CardTitle>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by username or phone..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                      data-testid="input-user-search"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant={minerFilter === "all" ? "default" : "outline"}
+                      onClick={() => setMinerFilter("all")}
+                      data-testid="button-filter-all"
+                    >
+                      All
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={minerFilter === "active" ? "default" : "outline"}
+                      onClick={() => setMinerFilter("active")}
+                      className={minerFilter === "active" ? "bg-green-600 hover:bg-green-700" : ""}
+                      data-testid="button-filter-active"
+                    >
+                      Active Miners
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={minerFilter === "none" ? "default" : "outline"}
+                      onClick={() => setMinerFilter("none")}
+                      className={minerFilter === "none" ? "bg-red-600 hover:bg-red-700" : ""}
+                      data-testid="button-filter-none"
+                    >
+                      No Miners
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {usersLoading ? (
@@ -253,7 +295,17 @@ export default function Admin() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {users.map((u: any) => (
+                    {users
+                      .filter((u: any) => {
+                        const matchesSearch = searchQuery === "" || 
+                          u.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          u.phoneNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+                        const matchesMiner = minerFilter === "all" ||
+                          (minerFilter === "active" && (u.totalMiners || 0) > 0) ||
+                          (minerFilter === "none" && (u.totalMiners || 0) === 0);
+                        return matchesSearch && matchesMiner;
+                      })
+                      .map((u: any) => (
                       <div key={u.id} className="flex items-center justify-between p-4 rounded-lg bg-background/50 border border-border">
                         <div className="flex-1">
                           <div className="font-medium">{u.username}</div>
