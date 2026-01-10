@@ -40,7 +40,8 @@ export interface IStorage {
 
   getUserWithdrawals(userId: string): Promise<WithdrawalRequest[]>;
   getAllWithdrawals(): Promise<WithdrawalRequest[]>;
-  createWithdrawal(userId: string, amount: number, accountNumber: string): Promise<WithdrawalRequest>;
+  createWithdrawal(userId: string, amount: number, taxAmount: number, netAmount: number, method: string, accountHolderName: string, accountNumber: string): Promise<WithdrawalRequest>;
+  getUserMachineCount(userId: string): Promise<number>;
   updateWithdrawalStatus(id: string, status: string): Promise<WithdrawalRequest | undefined>;
 
   getUserDeposits(userId: string): Promise<DepositRequest[]>;
@@ -175,12 +176,20 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(withdrawalRequests.createdAt));
   }
 
-  async createWithdrawal(userId: string, amount: number, accountNumber: string): Promise<WithdrawalRequest> {
+  async createWithdrawal(userId: string, amount: number, taxAmount: number, netAmount: number, method: string, accountHolderName: string, accountNumber: string): Promise<WithdrawalRequest> {
     const [withdrawal] = await db
       .insert(withdrawalRequests)
-      .values({ userId, amount, accountNumber, status: "pending" })
+      .values({ userId, amount, taxAmount, netAmount, method, accountHolderName, accountNumber, status: "pending" })
       .returning();
     return withdrawal;
+  }
+
+  async getUserMachineCount(userId: string): Promise<number> {
+    const machines = await db
+      .select()
+      .from(userMachines)
+      .where(eq(userMachines.userId, userId));
+    return machines.length;
   }
 
   async updateWithdrawalStatus(id: string, status: string): Promise<WithdrawalRequest | undefined> {

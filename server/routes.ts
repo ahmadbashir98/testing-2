@@ -106,6 +106,18 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Get global stats
+  app.get("/api/admin/stats", async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const totalUsers = users.length;
+      const totalBalance = users.reduce((sum, u) => sum + (u.balance || 0), 0);
+      res.json({ totalUsers, totalBalance });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
   // Admin: Get all users
   app.get("/api/admin/users", async (req, res) => {
     try {
@@ -290,8 +302,8 @@ export async function registerRoutes(
   // Withdrawals: Request withdrawal
   app.post("/api/withdrawals/request", async (req, res) => {
     try {
-      const { userId, amount, accountNumber } = req.body;
-      if (!userId || !amount || !accountNumber) {
+      const { userId, amount, method, accountHolderName, accountNumber } = req.body;
+      if (!userId || !amount || !method || !accountHolderName || !accountNumber) {
         return res.status(400).json({ message: "All fields required" });
       }
 
@@ -304,12 +316,22 @@ export async function registerRoutes(
         return res.status(404).json({ message: "User not found" });
       }
 
+      // Check if user has at least one active machine
+      const machineCount = await storage.getUserMachineCount(userId);
+      if (machineCount === 0) {
+        return res.status(400).json({ message: "Please activate a machine to enable withdrawals." });
+      }
+
       if (user.balance < amount) {
         return res.status(400).json({ message: "Insufficient balance" });
       }
 
+      // Calculate 10% tax
+      const taxAmount = amount * 0.10;
+      const netAmount = amount - taxAmount;
+
       await storage.updateUserBalance(userId, user.balance - amount);
-      const withdrawal = await storage.createWithdrawal(userId, amount, accountNumber);
+      const withdrawal = await storage.createWithdrawal(userId, amount, taxAmount, netAmount, method, accountHolderName, accountNumber);
 
       res.json(withdrawal);
     } catch (error: any) {
