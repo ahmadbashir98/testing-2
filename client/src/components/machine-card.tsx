@@ -1,4 +1,4 @@
-import { Lock, TrendingUp, Calendar, Coins, Ban, Gift } from "lucide-react";
+import { TrendingUp, Calendar, Coins, Ban, Gift } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { MachineData } from "@shared/schema";
@@ -58,7 +58,7 @@ export function MachineCard({
             ? "border-l-4 border-l-blue-400"
             : "border-l-4 border-l-blue-600"
         }
-        ${canAfford && !limitReached ? "hover-elevate" : "opacity-60"}
+        ${!limitReached ? "hover-elevate" : "opacity-60"}
       `}
       data-testid={`card-machine-${machine.id}`}
     >
@@ -109,27 +109,15 @@ export function MachineCard({
                 <Ban className="w-4 h-4 mr-1" />
                 Limit Reached
               </Button>
-            ) : canAfford ? (
+            ) : (
               <Button
                 onClick={onRent}
                 disabled={isLoading}
-                className={`
-                  min-w-[80px]
-                  ${
-                    isHighTier
-                      ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
-                      : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
-                  }
-                `}
+                className="min-w-[80px] bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
                 data-testid={`button-rent-${machine.id}`}
               >
-                Rent
+                RENT
               </Button>
-            ) : (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Lock className="w-4 h-4" />
-                <span className="text-sm">Locked</span>
-              </div>
             )}
           </div>
         </div>
