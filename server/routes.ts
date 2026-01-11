@@ -476,27 +476,25 @@ export async function registerRoutes(
         const commission1 = machinePrice * 0.10;
         const referrer1 = await storage.getUser(user.referredById);
         if (referrer1) {
-          const referrer1Balance = parseFloat(String(referrer1.balance));
-          await storage.updateUserBalance(referrer1.id, referrer1Balance + commission1);
-          await storage.updateUserReferralEarnings(referrer1.id, commission1);
-
-          // One-time rebate bonus for L1 referrer on first machine rental
+          const referrer1Balance = parseFloat(String(referrer1.balance || 0));
+          
+          // Check if one-time rebate bonus should be applied
+          let rebateAmount = 0;
           if (!user.rebatePaidToReferrer && machine.rebate > 0) {
-            const rebateAmount = machine.rebate;
-            // commission1 was already added above, now just add rebate
-            const referrer1AfterCommission = await storage.getUser(referrer1.id);
-            if (referrer1AfterCommission) {
-              const currentBalance = parseFloat(String(referrer1AfterCommission.balance));
-              await storage.updateUserBalance(referrer1.id, currentBalance + rebateAmount);
-            }
+            rebateAmount = machine.rebate;
             await storage.markRebatePaid(userId);
           }
+          
+          // Credit commission + rebate in one update to avoid race conditions
+          const totalCredit = commission1 + rebateAmount;
+          await storage.updateUserBalance(referrer1.id, referrer1Balance + totalCredit);
+          await storage.updateUserReferralEarnings(referrer1.id, commission1);
 
           if (referrer1.referredById) {
             const referrer2 = await storage.getUser(referrer1.referredById);
             if (referrer2) {
               const commission2 = machinePrice * 0.04;
-              const referrer2Balance = parseFloat(String(referrer2.balance));
+              const referrer2Balance = parseFloat(String(referrer2.balance || 0));
               await storage.updateUserBalance(referrer2.id, referrer2Balance + commission2);
               await storage.updateUserReferralEarnings(referrer2.id, commission2);
             }
@@ -742,36 +740,35 @@ export async function registerRoutes(
       if (status === "approved" && deposit.status !== "approved") {
         const user = await storage.getUser(deposit.userId);
         if (user) {
-          await storage.updateUserBalance(user.id, parseFloat(String(user.balance)) + parseFloat(String(deposit.amount)));
+          const userBalance = parseFloat(String(user.balance || 0));
+          const depositAmount = parseFloat(String(deposit.amount || 0));
+          await storage.updateUserBalance(user.id, userBalance + depositAmount);
           
           // Process referral commissions on deposit approval
-          const depositAmount = parseFloat(String(deposit.amount));
           if (user.referredById) {
             const commission1 = depositAmount * 0.10;
             const referrer1 = await storage.getUser(user.referredById);
             if (referrer1) {
-              const referrer1Balance = parseFloat(String(referrer1.balance));
-              await storage.updateUserBalance(referrer1.id, referrer1Balance + commission1);
-              await storage.updateUserReferralEarnings(referrer1.id, commission1);
-              await storage.createReferralCommission(referrer1.id, user.id, deposit.id, 1, commission1);
-
-              // One-time rebate bonus for L1 referrer on first deposit (5% of deposit amount)
+              const referrer1Balance = parseFloat(String(referrer1.balance || 0));
+              
+              // Check if one-time rebate bonus should be applied (5% of deposit amount)
+              let rebateAmount = 0;
               if (!user.rebatePaidToReferrer) {
-                const rebateAmount = depositAmount * 0.05;
-                // commission1 was already added above, now just add rebate
-                const referrer1AfterCommission = await storage.getUser(referrer1.id);
-                if (referrer1AfterCommission) {
-                  const currentBalance = parseFloat(String(referrer1AfterCommission.balance));
-                  await storage.updateUserBalance(referrer1.id, currentBalance + rebateAmount);
-                }
+                rebateAmount = depositAmount * 0.05;
                 await storage.markRebatePaid(user.id);
               }
+              
+              // Credit commission + rebate in one update to avoid race conditions
+              const totalCredit = commission1 + rebateAmount;
+              await storage.updateUserBalance(referrer1.id, referrer1Balance + totalCredit);
+              await storage.updateUserReferralEarnings(referrer1.id, commission1);
+              await storage.createReferralCommission(referrer1.id, user.id, deposit.id, 1, commission1);
 
               if (referrer1.referredById) {
                 const referrer2 = await storage.getUser(referrer1.referredById);
                 if (referrer2) {
                   const commission2 = depositAmount * 0.04;
-                  const referrer2Balance = parseFloat(String(referrer2.balance));
+                  const referrer2Balance = parseFloat(String(referrer2.balance || 0));
                   await storage.updateUserBalance(referrer2.id, referrer2Balance + commission2);
                   await storage.updateUserReferralEarnings(referrer2.id, commission2);
                   await storage.createReferralCommission(referrer2.id, user.id, deposit.id, 2, commission2);
@@ -789,20 +786,25 @@ export async function registerRoutes(
     }
   });
 
-  // Referrals: Get user's referrals
+  // Referrals: Get user's referrals with commission data
   app.get("/api/referrals/:userId", async (req, res) => {
     try {
       const level1 = await storage.getReferrals(req.params.userId);
       const level2 = await storage.getLevel2Referrals(req.params.userId);
       
-      const safeLevel1 = level1.map(u => {
+      // Get commission earned from each Level 1 referral
+      const safeLevel1 = await Promise.all(level1.map(async (u) => {
         const { password: _, ...safe } = u;
-        return safe;
-      });
-      const safeLevel2 = level2.map(u => {
+        const commissionEarned = await storage.getCommissionFromUser(req.params.userId, u.id);
+        return { ...safe, commissionEarned };
+      }));
+      
+      // Get commission earned from each Level 2 referral
+      const safeLevel2 = await Promise.all(level2.map(async (u) => {
         const { password: _, ...safe } = u;
-        return safe;
-      });
+        const commissionEarned = await storage.getCommissionFromUser(req.params.userId, u.id);
+        return { ...safe, commissionEarned };
+      }));
 
       res.json({ level1: safeLevel1, level2: safeLevel2 });
     } catch (error: any) {
