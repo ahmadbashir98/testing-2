@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Flame, Users, ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, Sun, Moon, Search, Megaphone, Plus, Trash2, Image, Sparkles, Bell, Gift, Zap, Star } from "lucide-react";
+import { Flame, Users, ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, Sun, Moon, Search, Megaphone, Plus, Trash2, Image, Sparkles, Bell, Gift, Zap, Star, Key } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ export default function Admin() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [balanceInput, setBalanceInput] = useState<Record<string, string>>({});
+  const [passwordInput, setPasswordInput] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [minerFilter, setMinerFilter] = useState<"all" | "active" | "none">("all");
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -211,6 +212,20 @@ export default function Admin() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
       toast({ title: "Balance updated!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updatePasswordMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
+      const res = await apiRequest("PATCH", `/api/admin/users/${userId}/password`, { password, adminId: user?.id });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Password updated!", description: "User can now login with the new password." });
     },
     onError: (error: any) => {
       toast({ title: "Failed", description: error.message, variant: "destructive" });
@@ -425,41 +440,76 @@ export default function Admin() {
                         return matchesSearch && matchesMiner;
                       })
                       .map((u: any) => (
-                      <div key={u.id} className="flex items-center justify-between p-4 rounded-lg bg-background/50 border border-border">
-                        <div className="flex-1">
-                          <div className="font-medium">{u.username}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {u.phoneNumber && <span className="mr-2">Phone: {u.phoneNumber}</span>}
-                            Balance: <span className="text-amber-400">${u.balance?.toLocaleString() || 0}</span>
-                            {" | "}Miners: <span className="text-blue-400">{u.totalMiners || 0}</span>
-                            {u.isAdmin && (
-                              <Badge className="ml-2 bg-purple-500/20 text-purple-400">Admin</Badge>
-                            )}
+                      <div key={u.id} className="p-4 rounded-lg bg-background/50 border border-border space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium">{u.username}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {u.phoneNumber && <span className="mr-2">Phone: {u.phoneNumber}</span>}
+                              Balance: <span className="text-amber-400">${u.balance?.toLocaleString() || 0}</span>
+                              {" | "}Miners: <span className="text-blue-400">{u.totalMiners || 0}</span>
+                              {u.isAdmin && (
+                                <Badge className="ml-2 bg-purple-500/20 text-purple-400">Admin</Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            placeholder="New balance"
-                            className="w-28"
-                            value={balanceInput[u.id] || ""}
-                            onChange={(e) => setBalanceInput({ ...balanceInput, [u.id]: e.target.value })}
-                            data-testid={`input-balance-${u.id}`}
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              const newBalance = parseFloat(balanceInput[u.id]);
-                              if (!isNaN(newBalance)) {
-                                updateBalanceMutation.mutate({ userId: u.id, balance: newBalance });
-                                setBalanceInput({ ...balanceInput, [u.id]: "" });
-                              }
-                            }}
-                            disabled={updateBalanceMutation.isPending}
-                            data-testid={`button-update-balance-${u.id}`}
-                          >
-                            Update
-                          </Button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              placeholder="New balance"
+                              className="w-28"
+                              value={balanceInput[u.id] || ""}
+                              onChange={(e) => setBalanceInput({ ...balanceInput, [u.id]: e.target.value })}
+                              data-testid={`input-balance-${u.id}`}
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                const newBalance = parseFloat(balanceInput[u.id]);
+                                if (!isNaN(newBalance)) {
+                                  updateBalanceMutation.mutate({ userId: u.id, balance: newBalance });
+                                  setBalanceInput({ ...balanceInput, [u.id]: "" });
+                                }
+                              }}
+                              disabled={updateBalanceMutation.isPending}
+                              data-testid={`button-update-balance-${u.id}`}
+                            >
+                              Update
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <Key className="w-4 h-4 text-muted-foreground" />
+                              <Input
+                                type="password"
+                                placeholder="New password"
+                                className="w-32"
+                                value={passwordInput[u.id] || ""}
+                                onChange={(e) => setPasswordInput({ ...passwordInput, [u.id]: e.target.value })}
+                                data-testid={`input-password-${u.id}`}
+                              />
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+                              onClick={() => {
+                                const newPassword = passwordInput[u.id];
+                                if (newPassword && newPassword.length >= 6) {
+                                  updatePasswordMutation.mutate({ userId: u.id, password: newPassword });
+                                  setPasswordInput({ ...passwordInput, [u.id]: "" });
+                                } else {
+                                  toast({ title: "Invalid password", description: "Password must be at least 6 characters", variant: "destructive" });
+                                }
+                              }}
+                              disabled={updatePasswordMutation.isPending}
+                              data-testid={`button-reset-password-${u.id}`}
+                            >
+                              Reset
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}

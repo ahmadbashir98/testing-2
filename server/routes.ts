@@ -203,6 +203,27 @@ export async function registerRoutes(
     }
   });
 
+  // Admin: Update user password
+  app.patch("/api/admin/users/:id/password", async (req, res) => {
+    try {
+      const { password, adminId } = req.body;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      if (!password || password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      const user = await storage.updateUserPassword(req.params.id, password);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const { password: _, ...safeUser } = user;
+      res.json(safeUser);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
   // Mining: Get active session
   app.get("/api/mining/session/:userId", async (req, res) => {
     try {
