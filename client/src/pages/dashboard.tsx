@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Flame, User, Phone, Cpu, TrendingUp, MessageCircle, Sparkles } from "lucide-react";
+import { Flame, User, Phone, Cpu, TrendingUp, MessageCircle, Sparkles, Building2 } from "lucide-react";
 import { SiFacebook, SiWhatsapp, SiTelegram } from "react-icons/si";
+import alexanderPhoto from "@assets/generated_images/executive_chairman_professional_headshot.png";
+import marcusPhoto from "@assets/generated_images/founder_ceo_professional_headshot.png";
+import sophiaPhoto from "@assets/generated_images/managing_director_professional_headshot.png";
 import { FloatingCoins } from "@/components/floating-coins";
 import { MiningButton } from "@/components/mining-button";
 import { StatsCards } from "@/components/stats-cards";
@@ -295,6 +298,62 @@ export default function Dashboard() {
               <SiTelegram className="w-6 h-6 text-sky-500" />
               <span className="text-xs">Telegram</span>
             </Button>
+          </div>
+        </div>
+
+        <div className="rounded-xl overflow-hidden mt-6" data-testid="section-about-cloudfire">
+          <div className="bg-white p-6 space-y-6">
+            <div className="flex items-center gap-2 justify-center">
+              <Building2 className="w-6 h-6 text-gray-800" />
+              <h2 className="text-xl font-bold text-gray-900">About CloudFire Miner</h2>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="flex flex-col items-center text-center space-y-2">
+                <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-blue-500 shadow-lg">
+                  <img src={alexanderPhoto} alt="Alexander V. Thorne" className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">Alexander V. Thorne</p>
+                  <p className="text-xs text-gray-600">Executive Chairman</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center text-center space-y-2">
+                <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-amber-500 shadow-lg">
+                  <img src={marcusPhoto} alt="Marcus Sterling" className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">Marcus Sterling</p>
+                  <p className="text-xs text-gray-600">Founder & CEO</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center text-center space-y-2">
+                <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-blue-500 shadow-lg">
+                  <img src={sophiaPhoto} alt="Sophia Reynolds" className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm">Sophia Reynolds</p>
+                  <p className="text-xs text-gray-600">Managing Director</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-4 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Registration</span>
+                <span className="font-medium text-gray-900">USA-Registered Company</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Validity</span>
+                <span className="font-medium text-gray-900">2026 – 2030</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Operations</span>
+                <span className="font-medium text-gray-900">Global Mining Network</span>
+              </div>
+            </div>
           </div>
         </div>
 
