@@ -195,18 +195,20 @@ export interface MachineData {
   price: number;
   dailyProfit: number;
   duration: number;
+  totalProfit: number;
+  rebate: number;
   maxRentals: number;
 }
 
 export const MINING_MACHINES_DATA: MachineData[] = [
-  { id: "m1", name: "M1", level: 1, price: 5, dailyProfit: 0.32, duration: 25, maxRentals: 1 },
-  { id: "m2", name: "M2", level: 2, price: 16, dailyProfit: 0.64, duration: 60, maxRentals: 1 },
-  { id: "m3", name: "M3", level: 3, price: 32, dailyProfit: 1.27, duration: 60, maxRentals: 1 },
-  { id: "m4", name: "M4", level: 4, price: 65, dailyProfit: 2.54, duration: 60, maxRentals: 1 },
-  { id: "m5", name: "M5", level: 5, price: 110, dailyProfit: 4.76, duration: 60, maxRentals: 2 },
-  { id: "m6", name: "M6", level: 6, price: 160, dailyProfit: 6.98, duration: 60, maxRentals: 2 },
-  { id: "m7", name: "M7", level: 7, price: 220, dailyProfit: 9.52, duration: 60, maxRentals: 2 },
-  { id: "m8", name: "M8", level: 8, price: 320, dailyProfit: 14.29, duration: 60, maxRentals: 2 },
-  { id: "m9", name: "M9", level: 9, price: 480, dailyProfit: 22.22, duration: 60, maxRentals: 2 },
-  { id: "m10", name: "M10", level: 10, price: 635, dailyProfit: 31.75, duration: 60, maxRentals: 2 },
+  { id: "m1", name: "Nebula Core HZ-1", level: 1, price: 5, dailyProfit: 0.50, duration: 20, totalProfit: 10.00, rebate: 0.50, maxRentals: 1 },
+  { id: "m2", name: "Quantum Node HZ-2", level: 2, price: 20, dailyProfit: 0.67, duration: 60, totalProfit: 40.20, rebate: 1.00, maxRentals: 1 },
+  { id: "m3", name: "Titan Miner HZ-3", level: 3, price: 50, dailyProfit: 1.67, duration: 60, totalProfit: 100.20, rebate: 1.70, maxRentals: 1 },
+  { id: "m4", name: "Apex Grid HZ-4", level: 4, price: 100, dailyProfit: 3.33, duration: 60, totalProfit: 200.00, rebate: 2.30, maxRentals: 1 },
+  { id: "m5", name: "Vortex Prime HZ-5", level: 5, price: 150, dailyProfit: 5.00, duration: 60, totalProfit: 300.00, rebate: 4.00, maxRentals: 2 },
+  { id: "m6", name: "Zenith Pulse HZ-6", level: 6, price: 200, dailyProfit: 6.66, duration: 60, totalProfit: 400.00, rebate: 5.50, maxRentals: 2 },
+  { id: "m7", name: "Stellar Forge HZ-7", level: 7, price: 500, dailyProfit: 16.66, duration: 60, totalProfit: 1000.00, rebate: 11.00, maxRentals: 2 },
+  { id: "m8", name: "Infinity Ray HZ-8", level: 8, price: 700, dailyProfit: 23.33, duration: 60, totalProfit: 1400.00, rebate: 15.00, maxRentals: 2 },
+  { id: "m9", name: "Omega Stream HZ-9", level: 9, price: 1000, dailyProfit: 33.33, duration: 60, totalProfit: 2000.00, rebate: 40.00, maxRentals: 2 },
+  { id: "m10", name: "Galactic Vault HZ-10", level: 10, price: 1200, dailyProfit: 48.00, duration: 50, totalProfit: 2400.00, rebate: 60.00, maxRentals: 2 },
 ];

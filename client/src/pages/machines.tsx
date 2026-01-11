@@ -50,7 +50,7 @@ export default function Machines() {
     },
   });
 
-  const balance = userData?.balance ?? user?.balance ?? 0;
+  const balance = parseFloat(String(userData?.balance ?? user?.balance ?? 0));
   const isLoading = userLoading || machinesLoading;
 
   const machineOwnershipCount = (machineId: string) => {
