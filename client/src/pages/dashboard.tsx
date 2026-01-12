@@ -10,6 +10,7 @@ import { MiningButton } from "@/components/mining-button";
 import { StatsCards } from "@/components/stats-cards";
 import { BottomNav } from "@/components/bottom-nav";
 import { AnnouncementsCarousel } from "@/components/announcements-carousel";
+import { ActiveSessionCard } from "@/components/active-session-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -51,6 +52,18 @@ export default function Dashboard() {
     enabled: !!user?.id,
   });
 
+  // Fetch active mining sessions for individual timers
+  const { data: activeSessions = [], refetch: refetchSessions } = useQuery<any[]>({
+    queryKey: ["/api/mining/sessions", user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/mining/sessions/${user?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch sessions");
+      return res.json();
+    },
+    enabled: !!user?.id,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
   useEffect(() => {
     if (miningStatus?.serverTime) {
       const serverNow = new Date(miningStatus.serverTime).getTime();
@@ -78,6 +91,7 @@ export default function Dashboard() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/mining/status", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/users", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/mining/sessions", user?.id] });
       toast({
         title: "Reward claimed!",
         description: `You earned $${data.reward.toFixed(2)} from ${data.machinesClaimed} machine(s)!`,
@@ -173,71 +187,35 @@ export default function Dashboard() {
           />
         </div>
 
-        {machinesWithData.length > 0 && (
+        {activeSessions.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Cpu className="w-5 h-5 text-blue-400" />
               <h2 className="text-lg font-semibold">Active Machines</h2>
               <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                {machinesWithData.filter(m => m.isActive).length} Running
+                {activeSessions.length} Mining
               </Badge>
             </div>
 
             <div className="space-y-3">
-              {machinesWithData.map((machine: any) => (
-                <Card key={machine.id} className="bg-gradient-to-br from-blue-500/5 to-amber-500/5 border-blue-500/20 overflow-visible">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                            <Cpu className="w-5 h-5 text-white" />
-                          </div>
-                          {machine.isActive && (
-                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-semibold">{machine.machineData?.name || "Unknown"}</div>
-                          <div className="text-xs text-muted-foreground">
-                            Level {machine.machineData?.level || 1}
-                          </div>
-                        </div>
-                      </div>
-                      <Badge className={machine.isActive ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}>
-                        {machine.isActive ? "Running" : "Expired"}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <div className="flex items-center gap-1 text-amber-400">
-                        <TrendingUp className="w-4 h-4" />
-                        <span className="font-medium">${machine.machineData?.dailyProfit || 0}/day</span>
-                      </div>
-                      <span className="text-muted-foreground">{machine.daysRemaining} days left</span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <Progress value={machine.progressPercent} className="h-2" />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Contract Progress</span>
-                        <span>{Math.round(machine.progressPercent)}%</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              {activeSessions.map((session: any) => (
+                <ActiveSessionCard 
+                  key={session.id} 
+                  session={session}
+                  serverTimeOffset={serverTimeOffset}
+                />
               ))}
             </div>
           </div>
         )}
 
-        {machinesWithData.length === 0 && (
+        {activeSessions.length === 0 && (
           <Card className="bg-gradient-to-br from-blue-500/5 to-amber-500/5 border-blue-500/20">
             <CardContent className="p-6 text-center">
               <Cpu className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-              <h3 className="font-semibold mb-1">No Active Machines</h3>
+              <h3 className="font-semibold mb-1">No Active Mining Sessions</h3>
               <p className="text-sm text-muted-foreground">
-                Rent mining machines to increase your daily earnings!
+                Rent mining machines to start earning!
               </p>
             </CardContent>
           </Card>

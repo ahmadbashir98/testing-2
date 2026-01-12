@@ -898,11 +898,16 @@ export async function registerRoutes(
       const sessionsToComplete = await storage.getSessionsDueForCompletion();
       
       for (const session of sessionsToComplete) {
-        const dailyProfit = parseFloat(String(session.dailyProfit));
-        
-        // Credit user balance
-        const user = await storage.getUser(session.userId);
-        if (user) {
+        try {
+          const dailyProfit = parseFloat(String(session.dailyProfit));
+          
+          // Credit user balance
+          const user = await storage.getUser(session.userId);
+          if (!user) {
+            console.error(`Session ${session.id}: User ${session.userId} not found, skipping`);
+            continue;
+          }
+
           const userBalance = parseFloat(String(user.balance || 0));
           await storage.updateUserBalance(session.userId, userBalance + dailyProfit);
           
@@ -932,21 +937,23 @@ export async function registerRoutes(
               }
             }
           }
+          
+          // Mark session as completed
+          await storage.completeSession(session.id, dailyProfit);
+          
+          // Create new session for the next 24 hours (auto-renewal)
+          await storage.createMiningSession(
+            session.userId,
+            session.userMachineId,
+            session.machineId,
+            session.machineName,
+            dailyProfit
+          );
+          
+          console.log(`Completed session ${session.id} for ${session.machineName}, credited $${dailyProfit} to user ${session.userId}`);
+        } catch (sessionError) {
+          console.error(`Error processing session ${session.id}:`, sessionError);
         }
-        
-        // Mark session as completed
-        await storage.completeSession(session.id, dailyProfit);
-        
-        // Create new session for the next 24 hours (auto-renewal)
-        await storage.createMiningSession(
-          session.userId,
-          session.userMachineId,
-          session.machineId,
-          session.machineName,
-          dailyProfit
-        );
-        
-        console.log(`Completed session ${session.id} for ${session.machineName}, credited $${dailyProfit}`);
       }
     } catch (error) {
       console.error("Cron job error:", error);
