@@ -1,5 +1,6 @@
-import { Wallet, Users } from "lucide-react";
+import { Wallet, Cpu, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Link } from "wouter";
 
 interface StatsCardsProps {
   totalAssets: number;
@@ -23,19 +24,22 @@ export function StatsCards({ totalAssets, totalMiners }: StatsCardsProps) {
         </div>
       </Card>
 
-      <Card className="p-4 backdrop-blur-md bg-card/80 border-blue-500/20">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-blue-500/20">
-            <Users className="w-6 h-6 text-blue-400" />
+      <Link href="/my-miners">
+        <Card className="p-4 backdrop-blur-md bg-card/80 border-blue-500/20 cursor-pointer hover-elevate" data-testid="card-your-miners">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/20">
+              <Cpu className="w-6 h-6 text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground">Your Miners</p>
+              <p className="text-xl md:text-2xl font-bold text-blue-400 tabular-nums" data-testid="text-total-miners">
+                {totalMiners}
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Your Miners</p>
-            <p className="text-xl md:text-2xl font-bold text-blue-400 tabular-nums" data-testid="text-total-miners">
-              {totalMiners}
-            </p>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </Link>
     </div>
   );
 }
