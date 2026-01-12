@@ -224,49 +224,28 @@ export async function registerRoutes(
     }
   });
 
-  // Mining: Get active session
-  app.get("/api/mining/session/:userId", async (req, res) => {
+  // Mining: Get active sessions (per-machine)
+  app.get("/api/mining/sessions/:userId", async (req, res) => {
     try {
-      const session = await storage.getActiveMiningSession(req.params.userId);
-      if (session) {
-        // Return session with ISO timestamp and server time for sync
-        res.json({
+      const sessions = await storage.getActiveMiningSessions(req.params.userId);
+      const now = new Date();
+      
+      // Return sessions with remaining seconds for each
+      const sessionsWithTime = sessions.map(session => {
+        const endTime = new Date(session.endTime);
+        const remainingMs = Math.max(0, endTime.getTime() - now.getTime());
+        const remainingSeconds = Math.floor(remainingMs / 1000);
+        
+        return {
           ...session,
-          endsAt: new Date(session.endsAt).toISOString(),
-          startedAt: new Date(session.startedAt).toISOString(),
-          serverTime: new Date().toISOString(),
-        });
-      } else {
-        res.json(null);
-      }
-    } catch (error: any) {
-      res.status(500).json({ message: error.message || "Server error" });
-    }
-  });
-
-  // Mining: Start session
-  app.post("/api/mining/start", async (req, res) => {
-    try {
-      const { userId } = req.body;
-      if (!userId) {
-        return res.status(400).json({ message: "User ID required" });
-      }
-
-      const existingSession = await storage.getActiveMiningSession(userId);
-      if (existingSession) {
-        return res.status(400).json({ message: "Mining session already active" });
-      }
-
-      const endsAt = new Date();
-      endsAt.setHours(endsAt.getHours() + 24);
-
-      const session = await storage.createMiningSession(userId, endsAt);
-      res.json({
-        ...session,
-        endsAt: endsAt.toISOString(),
-        startedAt: new Date(session.startedAt).toISOString(),
-        serverTime: new Date().toISOString(),
+          startTime: new Date(session.startTime).toISOString(),
+          endTime: endTime.toISOString(),
+          remainingSeconds,
+          serverTime: now.toISOString(),
+        };
       });
+      
+      res.json(sessionsWithTime);
     } catch (error: any) {
       res.status(500).json({ message: error.message || "Server error" });
     }
@@ -509,7 +488,16 @@ export async function registerRoutes(
       const newBalance = userBalance - machinePrice;
       await storage.updateUserBalance(userId, newBalance);
       await storage.updateUserMiners(userId, user.totalMiners + 1);
-      await storage.addUserMachine({ userId, machineId });
+      const userMachine = await storage.addUserMachine({ userId, machineId });
+      
+      // Create a mining session for this machine
+      await storage.createMiningSession(
+        userId,
+        userMachine.id,
+        machineId,
+        machine.name,
+        machine.dailyProfit
+      );
 
       // One-time fixed rebate to L1 referrer on first machine rental
       if (user.referredById && !user.rebatePaidToReferrer && machine.rebate > 0) {
@@ -903,6 +891,67 @@ export async function registerRoutes(
       res.status(500).json({ message: error.message || "Server error" });
     }
   });
+
+  // Cron job: Check and complete mining sessions every minute
+  setInterval(async () => {
+    try {
+      const sessionsToComplete = await storage.getSessionsDueForCompletion();
+      
+      for (const session of sessionsToComplete) {
+        const dailyProfit = parseFloat(String(session.dailyProfit));
+        
+        // Credit user balance
+        const user = await storage.getUser(session.userId);
+        if (user) {
+          const userBalance = parseFloat(String(user.balance || 0));
+          await storage.updateUserBalance(session.userId, userBalance + dailyProfit);
+          
+          // Save mining claim record
+          await storage.createMiningClaim(session.userId, dailyProfit, 1);
+          
+          // Distribute daily commissions (10% L1, 4% L2)
+          if (user.referredById) {
+            const commission1 = dailyProfit * 0.10;
+            const referrer1 = await storage.getUser(user.referredById);
+            if (referrer1) {
+              const referrer1Balance = parseFloat(String(referrer1.balance || 0));
+              await storage.updateUserBalance(referrer1.id, referrer1Balance + commission1);
+              await storage.updateUserReferralEarnings(referrer1.id, commission1);
+              await storage.createReferralCommission(referrer1.id, session.userId, 1, commission1, "daily_claim");
+              
+              // Level 2: 4%
+              if (referrer1.referredById) {
+                const referrer2 = await storage.getUser(referrer1.referredById);
+                if (referrer2) {
+                  const commission2 = dailyProfit * 0.04;
+                  const referrer2Balance = parseFloat(String(referrer2.balance || 0));
+                  await storage.updateUserBalance(referrer2.id, referrer2Balance + commission2);
+                  await storage.updateUserReferralEarnings(referrer2.id, commission2);
+                  await storage.createReferralCommission(referrer2.id, session.userId, 2, commission2, "daily_claim");
+                }
+              }
+            }
+          }
+        }
+        
+        // Mark session as completed
+        await storage.completeSession(session.id, dailyProfit);
+        
+        // Create new session for the next 24 hours (auto-renewal)
+        await storage.createMiningSession(
+          session.userId,
+          session.userMachineId,
+          session.machineId,
+          session.machineName,
+          dailyProfit
+        );
+        
+        console.log(`Completed session ${session.id} for ${session.machineName}, credited $${dailyProfit}`);
+      }
+    } catch (error) {
+      console.error("Cron job error:", error);
+    }
+  }, 60000); // Run every minute
 
   return httpServer;
 }
