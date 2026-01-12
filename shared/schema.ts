@@ -14,6 +14,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   phoneNumber: varchar("phone_number", { length: 11 }),
   balance: numeric("balance", { precision: 10, scale: 2 }).notNull().default("0"),
+  commissionBalance: numeric("commission_balance", { precision: 10, scale: 2 }).notNull().default("0"),
   totalMiners: integer("total_miners").notNull().default(0),
   isAdmin: boolean("is_admin").notNull().default(false),
   referralCode: varchar("referral_code").unique(),
@@ -64,6 +65,7 @@ export const userMachines = pgTable("user_machines", {
   machineId: varchar("machine_id").notNull(),
   purchasedAt: timestamp("purchased_at").notNull().defaultNow(),
   lastClaimedAt: timestamp("last_claimed_at"),
+  rebatePaid: boolean("rebate_paid").notNull().default(false),
 });
 
 export const insertUserMachineSchema = createInsertSchema(userMachines).pick({
