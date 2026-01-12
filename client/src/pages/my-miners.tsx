@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { ArrowLeft, Cpu, Clock, DollarSign, Calendar, Activity } from "lucide-react";
+import { ArrowLeft, Cpu, DollarSign, Calendar, Activity, Timer } from "lucide-react";
 import { Link } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BottomNav } from "@/components/bottom-nav";
 import { MINING_MACHINES_DATA } from "@shared/schema";
 
 interface MinerData {
@@ -29,6 +30,7 @@ export default function MyMiners() {
   const { data: miners, isLoading } = useQuery<MinerData[]>({
     queryKey: ["/api/miners/details", user?.id],
     enabled: !!user,
+    refetchInterval: 30000,
   });
 
   const runningMiners = miners?.filter((m) => !m.isExpired) || [];
@@ -46,7 +48,20 @@ export default function MyMiners() {
     });
   };
 
-  const getMachineImage = (machineId: string) => {
+  const formatTimeRemaining = (miner: MinerData) => {
+    if (miner.isExpired) return "Expired";
+    if (miner.remainingHours <= 0) return "Ready to claim";
+    
+    const hours = Math.floor(miner.remainingHours);
+    const minutes = Math.floor((miner.remainingHours % 1) * 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m remaining`;
+    }
+    return `${minutes}m remaining`;
+  };
+
+  const getMachineGradient = (machineId: string) => {
     const machine = MINING_MACHINES_DATA.find((m) => m.id === machineId);
     const level = machine?.level || 1;
     const colors = [
@@ -65,7 +80,7 @@ export default function MyMiners() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 pb-20">
       <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-lg border-b border-slate-800">
         <div className="flex items-center gap-3 px-4 py-4">
           <Link href="/dashboard">
@@ -76,7 +91,7 @@ export default function MyMiners() {
               <ArrowLeft className="w-5 h-5 text-slate-300" />
             </button>
           </Link>
-          <h1 className="text-xl font-bold text-white">Miners</h1>
+          <h1 className="text-xl font-bold text-white">My Miners</h1>
         </div>
 
         <div className="flex border-b border-slate-800">
@@ -150,78 +165,85 @@ export default function MyMiners() {
           displayMiners.map((miner) => (
             <Card
               key={miner.id}
-              className="overflow-hidden bg-slate-800/60 border-slate-700/50 shadow-lg shadow-black/20"
+              className="overflow-hidden bg-white/5 border-slate-700/50 shadow-lg"
               data-testid={`card-miner-${miner.id}`}
             >
-              <div className="bg-gradient-to-r from-blue-900/80 to-slate-800/80 px-4 py-3 border-b border-slate-700/50">
-                <h3 className="font-semibold text-white flex items-center gap-2">
-                  <Cpu className="w-4 h-4 text-blue-400" />
-                  {miner.machineName}
-                </h3>
-              </div>
-
               <div className="p-4">
-                <div className="flex gap-4">
+                <div className="flex items-start gap-4">
                   <div
-                    className={`w-20 h-20 rounded-xl bg-gradient-to-br ${getMachineImage(
+                    className={`w-16 h-16 rounded-xl bg-gradient-to-br ${getMachineGradient(
                       miner.machineId
-                    )} flex items-center justify-center shadow-lg`}
+                    )} flex items-center justify-center shadow-lg flex-shrink-0`}
                   >
-                    <Cpu className="w-10 h-10 text-white/90" />
+                    <Cpu className="w-8 h-8 text-white/90" />
                   </div>
 
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="w-4 h-4 text-slate-400" />
-                      <span className="text-slate-400">Used/Total:</span>
-                      <span className="text-white font-medium">
-                        {miner.daysUsed}/{miner.totalDays} Days
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm">
-                      <DollarSign className="w-4 h-4 text-emerald-400" />
-                      <span className="text-slate-400">Earned:</span>
-                      <span className="text-emerald-400 font-medium">
-                        ${miner.earnedIncome.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm">
-                      <Activity className="w-4 h-4 text-amber-400" />
-                      <span className="text-slate-400">Daily:</span>
-                      <span className="text-amber-400 font-medium">
-                        ${miner.dailyIncome.toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm">
-                      <Clock className="w-4 h-4 text-blue-400" />
-                      <span className="text-slate-400">Status:</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-white text-lg truncate">
+                        {miner.machineName}
+                      </h3>
                       <span
-                        className={`font-medium ${
-                          miner.isExpired ? "text-red-400" : "text-blue-400"
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          miner.isExpired
+                            ? "bg-red-500/20 text-red-400"
+                            : "bg-emerald-500/20 text-emerald-400"
                         }`}
                       >
-                        {miner.status}
+                        {miner.isExpired ? "Expired" : "Running"}
                       </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-800/50 rounded-lg p-2">
+                        <div className="flex items-center gap-1 text-slate-400 text-xs mb-1">
+                          <DollarSign className="w-3 h-3" />
+                          <span>Earned</span>
+                        </div>
+                        <span className="text-emerald-400 font-bold text-sm">
+                          ${miner.earnedIncome.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-800/50 rounded-lg p-2">
+                        <div className="flex items-center gap-1 text-slate-400 text-xs mb-1">
+                          <Activity className="w-3 h-3" />
+                          <span>Daily</span>
+                        </div>
+                        <span className="text-amber-400 font-bold text-sm">
+                          ${miner.dailyIncome.toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-800/50 rounded-lg p-2">
+                        <div className="flex items-center gap-1 text-slate-400 text-xs mb-1">
+                          <Calendar className="w-3 h-3" />
+                          <span>Days</span>
+                        </div>
+                        <span className="text-white font-bold text-sm">
+                          {miner.daysUsed}/{miner.totalDays}
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-800/50 rounded-lg p-2">
+                        <div className="flex items-center gap-1 text-slate-400 text-xs mb-1">
+                          <Timer className="w-3 h-3" />
+                          <span>Status</span>
+                        </div>
+                        <span className={`font-bold text-sm ${
+                          miner.isExpired ? "text-red-400" : 
+                          miner.remainingHours <= 0 ? "text-emerald-400" : "text-blue-400"
+                        }`}>
+                          {formatTimeRemaining(miner)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-slate-900/50 px-4 py-3 border-t border-slate-700/50 space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">Purchase Time:</span>
-                  <span className="text-slate-300">
-                    {formatDate(miner.purchasedAt)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500">Expiration Time:</span>
-                  <span className="text-slate-300">
-                    {formatDate(miner.expirationDate)}
-                  </span>
+                <div className="mt-3 pt-3 border-t border-slate-700/50 flex justify-between text-xs text-slate-400">
+                  <span>Purchased: {formatDate(miner.purchasedAt)}</span>
+                  <span>Expires: {formatDate(miner.expirationDate)}</span>
                 </div>
               </div>
             </Card>
@@ -229,34 +251,7 @@ export default function MyMiners() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800">
-        <div className="flex justify-around py-3">
-          <Link href="/dashboard">
-            <button className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-400 transition-colors px-4">
-              <Activity className="w-5 h-5" />
-              <span className="text-xs">Dashboard</span>
-            </button>
-          </Link>
-          <Link href="/machines">
-            <button className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-400 transition-colors px-4">
-              <Cpu className="w-5 h-5" />
-              <span className="text-xs">Rent</span>
-            </button>
-          </Link>
-          <Link href="/my-miners">
-            <button className="flex flex-col items-center gap-1 text-blue-400 transition-colors px-4">
-              <Cpu className="w-5 h-5" />
-              <span className="text-xs">My Miners</span>
-            </button>
-          </Link>
-          <Link href="/payments">
-            <button className="flex flex-col items-center gap-1 text-slate-400 hover:text-blue-400 transition-colors px-4">
-              <DollarSign className="w-5 h-5" />
-              <span className="text-xs">Payments</span>
-            </button>
-          </Link>
-        </div>
-      </div>
+      <BottomNav />
     </div>
   );
 }
