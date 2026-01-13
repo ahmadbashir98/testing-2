@@ -967,6 +967,71 @@ export async function registerRoutes(
     }
   });
 
+  // Support Messages: Get user's messages
+  app.get("/api/support/messages/:userId", async (req, res) => {
+    try {
+      const messages = await storage.getSupportMessages(req.params.userId);
+      res.json(messages);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
+  // Support Messages: Send message from user
+  app.post("/api/support/messages", async (req, res) => {
+    try {
+      const { userId, username, message } = req.body;
+      if (!userId || !username || !message) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      const supportMessage = await storage.createSupportMessage(userId, username, message, false);
+      res.json(supportMessage);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
+  // Support Messages: Mark messages as read
+  app.post("/api/support/messages/:userId/read", async (req, res) => {
+    try {
+      await storage.markMessagesAsRead(req.params.userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
+  // Support Messages: Admin - Get all messages
+  app.get("/api/admin/support/messages", async (req, res) => {
+    try {
+      const adminId = req.query.adminId as string;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      const messages = await storage.getAllSupportMessages();
+      res.json(messages);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
+  // Support Messages: Admin - Reply to user
+  app.post("/api/admin/support/reply", async (req, res) => {
+    try {
+      const { adminId, userId, username, message } = req.body;
+      if (!await requireAdmin(adminId)) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      if (!userId || !username || !message) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      const supportMessage = await storage.createSupportMessage(userId, username, message, true);
+      res.json(supportMessage);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Server error" });
+    }
+  });
+
   // Cron job: Check and complete mining sessions every minute
   setInterval(async () => {
     try {

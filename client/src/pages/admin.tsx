@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Flame, Users, ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, Sun, Moon, Search, Megaphone, Plus, Trash2, Image, Sparkles, Bell, Gift, Zap, Star, Key } from "lucide-react";
+import { Flame, Users, ArrowDownLeft, ArrowUpRight, Wallet, TrendingUp, Sun, Moon, Search, Megaphone, Plus, Trash2, Image, Sparkles, Bell, Gift, Zap, Star, Key, Headset, Send, MessageCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,6 +101,39 @@ export default function Admin() {
       return res.json();
     },
     enabled: !!user?.id && user?.isAdmin,
+  });
+
+  const { data: supportMessages = [], isLoading: messagesLoading, refetch: refetchMessages } = useQuery<any[]>({
+    queryKey: ["/api/admin/support/messages", user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/support/messages?adminId=${user?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch support messages");
+      return res.json();
+    },
+    enabled: !!user?.id && user?.isAdmin,
+  });
+
+  const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+
+  const replyMutation = useMutation({
+    mutationFn: async ({ userId, username, message }: { userId: string; username: string; message: string }) => {
+      const res = await apiRequest("POST", "/api/admin/support/reply", {
+        adminId: user?.id,
+        userId,
+        username,
+        message,
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      refetchMessages();
+      setReplyInputs({});
+      toast({ title: "Reply sent!" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to send reply", description: error.message, variant: "destructive" });
+    },
   });
 
   const [announcementForm, setAnnouncementForm] = useState({
@@ -353,7 +386,7 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue="withdrawals" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="users" className="gap-1 text-xs sm:text-sm" data-testid="tab-users">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Users</span>
@@ -369,6 +402,10 @@ export default function Admin() {
             <TabsTrigger value="announcements" className="gap-1 text-xs sm:text-sm" data-testid="tab-announcements">
               <Megaphone className="w-4 h-4" />
               <span className="hidden sm:inline">News</span>
+            </TabsTrigger>
+            <TabsTrigger value="support" className="gap-1 text-xs sm:text-sm" data-testid="tab-support">
+              <Headset className="w-4 h-4" />
+              <span className="hidden sm:inline">Support</span>
             </TabsTrigger>
           </TabsList>
 
@@ -867,6 +904,108 @@ export default function Admin() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="support">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Headset className="w-5 h-5" />
+                  Support Messages
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {messagesLoading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-24 w-full" />
+                    ))}
+                  </div>
+                ) : supportMessages.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Headset className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">No support messages yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {(() => {
+                      const groupedMessages = supportMessages.reduce((acc: Record<string, any[]>, msg: any) => {
+                        if (!acc[msg.userId]) acc[msg.userId] = [];
+                        acc[msg.userId].push(msg);
+                        return acc;
+                      }, {});
+
+                      return Object.entries(groupedMessages).map(([usrId, messages]: [string, any[]]) => {
+                        const userMessages = messages.filter((m: any) => !m.isFromAdmin);
+                        const latestUserMsg = userMessages[userMessages.length - 1];
+                        const username = messages[0]?.username || "Unknown";
+                        const unreadCount = messages.filter((m: any) => !m.isFromAdmin && !m.isRead).length;
+
+                        return (
+                          <Card key={usrId} className="border-purple-500/20">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                    <MessageCircle className="w-5 h-5 text-purple-500" />
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold">{username}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {messages.length} message{messages.length > 1 ? "s" : ""}
+                                    </p>
+                                  </div>
+                                </div>
+                                {unreadCount > 0 && (
+                                  <Badge variant="destructive" className="bg-red-500">
+                                    {unreadCount} new
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {latestUserMsg && (
+                                <div className="p-3 rounded-lg bg-muted/50 mb-3">
+                                  <p className="text-sm">{latestUserMsg.message}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {new Date(latestUserMsg.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
+                              )}
+
+                              <div className="flex gap-2">
+                                <Input
+                                  placeholder="Type your reply..."
+                                  value={replyInputs[usrId] || ""}
+                                  onChange={(e) => setReplyInputs({ ...replyInputs, [usrId]: e.target.value })}
+                                  className="flex-1"
+                                  data-testid={`input-reply-${usrId}`}
+                                />
+                                <Button
+                                  onClick={() => {
+                                    if (replyInputs[usrId]?.trim()) {
+                                      replyMutation.mutate({
+                                        userId: usrId,
+                                        username,
+                                        message: replyInputs[usrId],
+                                      });
+                                    }
+                                  }}
+                                  disabled={replyMutation.isPending || !replyInputs[usrId]?.trim()}
+                                  className="bg-purple-600 hover:bg-purple-700"
+                                  data-testid={`button-reply-${usrId}`}
+                                >
+                                  <Send className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

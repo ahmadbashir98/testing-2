@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Flame, User, Phone, Cpu, TrendingUp, MessageCircle, Sparkles, Building2 } from "lucide-react";
-import { SiFacebook, SiWhatsapp, SiTelegram } from "react-icons/si";
+import { Flame, User, Phone, Cpu, TrendingUp, MessageCircle, Sparkles, Building2, Headset, Send, Loader2, X } from "lucide-react";
+import { SiFacebook, SiWhatsapp } from "react-icons/si";
 import alexanderPhoto from "@assets/generated_images/executive_chairman_professional_headshot.png";
 import marcusPhoto from "@assets/generated_images/founder_ceo_professional_headshot.png";
 import sophiaPhoto from "@assets/generated_images/managing_director_professional_headshot.png";
@@ -15,6 +15,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -25,6 +28,53 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [nextClaimTime, setNextClaimTime] = useState<Date | null>(null);
   const [serverTimeOffset, setServerTimeOffset] = useState<number>(0);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [messageInput, setMessageInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const { data: supportMessages = [], refetch: refetchMessages } = useQuery<any[]>({
+    queryKey: ["/api/support/messages", user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/support/messages/${user?.id}`);
+      if (!res.ok) throw new Error("Failed to fetch messages");
+      return res.json();
+    },
+    enabled: !!user?.id && chatOpen,
+    refetchInterval: chatOpen ? 5000 : false,
+  });
+
+  const sendMessageMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const res = await apiRequest("POST", "/api/support/messages", {
+        userId: user?.id,
+        username: user?.username,
+        message,
+      });
+      return await res.json();
+    },
+    onSuccess: () => {
+      setMessageInput("");
+      refetchMessages();
+    },
+    onError: () => {
+      toast({
+        title: "Failed to send message",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (chatOpen && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [supportMessages, chatOpen]);
+
+  const handleSendMessage = () => {
+    if (!messageInput.trim()) return;
+    sendMessageMutation.mutate(messageInput.trim());
+  };
 
   const { data: miningStatus, isLoading: statusLoading, refetch: refetchStatus } = useQuery<any>({
     queryKey: ["/api/mining/status", user?.id],
@@ -269,12 +319,12 @@ export default function Dashboard() {
 
             <Button
               variant="outline"
-              className="flex flex-col items-center gap-2 h-auto py-4 bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20"
-              onClick={() => window.open("https://t.me/cloudfire", "_blank")}
-              data-testid="button-support-telegram"
+              className="flex flex-col items-center gap-2 h-auto py-4 bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20"
+              onClick={() => setChatOpen(true)}
+              data-testid="button-support-consultant"
             >
-              <SiTelegram className="w-6 h-6 text-sky-500" />
-              <span className="text-xs">Telegram</span>
+              <Headset className="w-6 h-6 text-purple-500" />
+              <span className="text-xs">Consultant</span>
             </Button>
           </div>
         </div>
@@ -343,6 +393,83 @@ export default function Dashboard() {
       </main>
 
       <BottomNav />
+
+      {/* Consultant Chat Dialog */}
+      <Dialog open={chatOpen} onOpenChange={setChatOpen}>
+        <DialogContent className="max-w-md h-[80vh] flex flex-col p-0">
+          <DialogHeader className="px-4 py-3 border-b bg-gradient-to-r from-purple-600 to-indigo-600">
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <Headset className="w-5 h-5" />
+              Customer Support
+            </DialogTitle>
+          </DialogHeader>
+
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-3">
+              {supportMessages.length === 0 ? (
+                <div className="text-center py-8">
+                  <Headset className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No messages yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Send a message to start a conversation with our support team
+                  </p>
+                </div>
+              ) : (
+                supportMessages.map((msg: any) => (
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.isFromAdmin ? "justify-start" : "justify-end"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                        msg.isFromAdmin
+                          ? "bg-gray-100 dark:bg-gray-800 text-foreground"
+                          : "bg-purple-600 text-white"
+                      }`}
+                    >
+                      {msg.isFromAdmin && (
+                        <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-1">
+                          Support Team
+                        </p>
+                      )}
+                      <p className="text-sm">{msg.message}</p>
+                      <p className={`text-xs mt-1 ${msg.isFromAdmin ? "text-muted-foreground" : "text-white/70"}`}>
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={chatEndRef} />
+            </div>
+          </ScrollArea>
+
+          <div className="p-4 border-t bg-background">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Type your message..."
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
+                className="flex-1"
+                data-testid="input-chat-message"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={sendMessageMutation.isPending || !messageInput.trim()}
+                className="bg-purple-600 hover:bg-purple-700"
+                data-testid="button-send-message"
+              >
+                {sendMessageMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

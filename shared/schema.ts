@@ -213,6 +213,26 @@ export const insertAnnouncementSchema = createInsertSchema(announcements).pick({
 export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
 export type Announcement = typeof announcements.$inferSelect;
 
+export const supportMessages = pgTable("support_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  username: text("username").notNull(),
+  message: text("message").notNull(),
+  isFromAdmin: boolean("is_from_admin").notNull().default(false),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertSupportMessageSchema = createInsertSchema(supportMessages).pick({
+  userId: true,
+  username: true,
+  message: true,
+  isFromAdmin: true,
+});
+
+export type InsertSupportMessage = z.infer<typeof insertSupportMessageSchema>;
+export type SupportMessage = typeof supportMessages.$inferSelect;
+
 export interface MachineData {
   id: string;
   name: string;

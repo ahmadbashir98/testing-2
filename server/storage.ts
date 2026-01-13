@@ -7,6 +7,7 @@ import {
   referralCommissions,
   miningClaims,
   announcements,
+  supportMessages,
   type User,
   type InsertUser,
   type UserMachine,
@@ -18,6 +19,8 @@ import {
   type MiningClaim,
   type Announcement,
   type InsertAnnouncement,
+  type SupportMessage,
+  type InsertSupportMessage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, ne, lte } from "drizzle-orm";
@@ -77,6 +80,11 @@ export interface IStorage {
 
   createMiningClaim(userId: string, amount: number, machinesClaimed: number): Promise<MiningClaim>;
   getUserMiningClaims(userId: string): Promise<MiningClaim[]>;
+
+  getSupportMessages(userId: string): Promise<SupportMessage[]>;
+  getAllSupportMessages(): Promise<SupportMessage[]>;
+  createSupportMessage(userId: string, username: string, message: string, isFromAdmin?: boolean): Promise<SupportMessage>;
+  markMessagesAsRead(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -452,6 +460,36 @@ export class DatabaseStorage implements IStorage {
       .from(miningClaims)
       .where(eq(miningClaims.userId, userId))
       .orderBy(desc(miningClaims.createdAt));
+  }
+
+  async getSupportMessages(userId: string): Promise<SupportMessage[]> {
+    return await db
+      .select()
+      .from(supportMessages)
+      .where(eq(supportMessages.userId, userId))
+      .orderBy(supportMessages.createdAt);
+  }
+
+  async getAllSupportMessages(): Promise<SupportMessage[]> {
+    return await db
+      .select()
+      .from(supportMessages)
+      .orderBy(desc(supportMessages.createdAt));
+  }
+
+  async createSupportMessage(userId: string, username: string, message: string, isFromAdmin: boolean = false): Promise<SupportMessage> {
+    const [msg] = await db
+      .insert(supportMessages)
+      .values({ userId, username, message, isFromAdmin })
+      .returning();
+    return msg;
+  }
+
+  async markMessagesAsRead(userId: string): Promise<void> {
+    await db
+      .update(supportMessages)
+      .set({ isRead: true })
+      .where(and(eq(supportMessages.userId, userId), eq(supportMessages.isFromAdmin, true)));
   }
 }
 
