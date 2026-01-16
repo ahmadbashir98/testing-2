@@ -1,21 +1,17 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "outputDirectory": "dist",
-  "builds": [
-    {
-      "src": "dist/index.cjs",
-      "use": "@vercel/node"
+  "functions": {
+    "api/index.cjs": {
+      "runtime": "nodejs20.x"
     }
-  ],
+  },
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/dist/index.cjs"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/dist/index.cjs"
+      "dest": "/api/index.cjs"
     }
   ]
 }
