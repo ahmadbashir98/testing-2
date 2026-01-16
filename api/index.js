@@ -1,4 +1,4 @@
 // api/index.js
-import app from "../dist/index.cjs";
+const app = require("../dist/index.cjs");
 
-export default app;
+module.exports = app;
